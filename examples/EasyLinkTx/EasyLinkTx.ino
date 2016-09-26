@@ -1,58 +1,49 @@
+/*
+  EasyLinkTx
+  
+  A basic EasyLink Transmit example..
+  Read the analog value from A0 (pin 2) and copy the value into the tx packet.
+  This Sketch is the counterpart of teh EasyLinkRx example.
+  
+  Hardware Required:
+  * CC1310 LaunchPad
+  
+  This example code is in the public domain.
+*/
+
 #include "EasyLink.h"
 
 EasyLink_TxPacket txPacket;
-volatile uint8_t transmitted;
-uint32_t packet_number = 0;
 
 EasyLink myLink;
 
 void setup() {
   Serial.begin(115200);
-  pinMode(GREEN_LED, OUTPUT);
+
   // begin defaults to EasyLink_Phy_50kbps2gfsk
   myLink.begin();
-  
+  Serial.println(myLink.version());
+
+  // Set the destination address to 0xaa
   txPacket.dstAddr[0] = 0xaa;
-  txPacket.absTime = 0;
-
-  //Tx "hello world\n"
-  txPacket.len = 12;
-  txPacket.payload[0] = 'h';
-  txPacket.payload[1] = 'e';
-  txPacket.payload[2] = 'l';
-  txPacket.payload[3] = 'l';
-  txPacket.payload[4] = 'o';
-  txPacket.payload[5] = ' ';
-  txPacket.payload[6] = 'w';
-  txPacket.payload[7] = 'o';
-  txPacket.payload[8] = 'r';
-  txPacket.payload[9] = 'l';
-  txPacket.payload[10] = 'd';
-  txPacket.payload[11] = '\n';
-
 }
 
 void loop() {
-  myLink.transmit(&txPacket, &txDone);
-  if(transmitted == true) {
-    flashLed(2);
-    Serial.print("Transmitted: #");
-    Serial.println(packet_number++);
+  uint16_t value = analogRead(A0);
+
+  // Copy the analog value into the txPacket payload
+  memcpy(&txPacket.payload, &value, sizeof(uint16_t));
+
+  // Set the length of the packet
+  txPacket.len = sizeof(uint16_t);
+
+  uint8_t status = myLink.transmit(&txPacket);
+
+  if(status == EasyLink_Status_Success) {
+    Serial.println("Packet transmitted successfully");
+  } else {
+    Serial.print("Transmit failed with status code: ");
+    Serial.println(status);
   }
   delay(1000);
 }
-
-void flashLed(uint8_t numFlashes) {
-  while(numFlashes > 0){
-    digitalWrite(GREEN_LED, HIGH);
-    delay(50);
-    digitalWrite(GREEN_LED, LOW);
-    delay(50);
-    numFlashes--;
-  }
-}
-
-void txDone(EasyLink_Status status) {
-  transmitted = true;
-}
-
