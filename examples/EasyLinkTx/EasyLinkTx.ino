@@ -36,6 +36,8 @@ void loop() {
 
   // Set the length of the packet
   txPacket.len = sizeof(uint16_t);
+  // Transmit immediately
+  txPacket.absTime = 0;
 
   uint8_t status = myLink.transmit(&txPacket);
 

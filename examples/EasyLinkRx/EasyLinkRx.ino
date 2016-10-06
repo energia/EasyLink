@@ -27,6 +27,9 @@ uint16_t value;
 void loop() {
   // Wait / block for 1 second to receive a packet.
   rxPacket.rxTimeout = 1000;
+  // Turn the receiver on immediately
+  rxPacket.absTime = 0;
+
   EasyLink_Status status = myLink.receive(&rxPacket);
   
   if (status == EasyLink_Status_Success) {
@@ -38,15 +41,5 @@ void loop() {
   } else {
     Serial.print("Error receiving packet with status code:  ");
     Serial.println(status);
-  }
-}
-
-void flashLed(uint8_t numFlashes) {
-  while (numFlashes > 0) {
-    digitalWrite(GREEN_LED, HIGH);
-    delay(20);
-    digitalWrite(GREEN_LED, LOW);
-    delay(50);
-    numFlashes--;
   }
 }
