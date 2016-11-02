@@ -37,9 +37,11 @@
 #include <ti/drivers/rf/RF.h>
 #include <driverlib/rf_data_entry.h>
 #include <driverlib/rf_prop_mailbox.h>
+#include <driverlib/rf_prop_cmd.h>
+#include <driverlib/chipinfo.h>
 
+#include "smartrf_settings/smartrf_settings_predefined.h"
 #include "smartrf_settings/smartrf_settings.h"
-#include "smartrf_settings_predefined.h"
 
 #include <ti/sysbios/knl/Semaphore.h>
 #include <xdc/runtime/Error.h>
@@ -49,10 +51,15 @@
 #include <inc/hw_ccfg.h>
 #include <inc/hw_ccfg_simple_struct.h>
 
+#include "Board.h"
+
+union setupCmd_t{
+    rfc_CMD_PROP_RADIO_DIV_SETUP_t divSetup;
+    rfc_CMD_PROP_RADIO_SETUP_t setup;
+};
+
 #define EASYLINK_MAX_ADDR_SIZE           8
 #define EASYLINK_MAX_ADDR_FILTERS        3
-
-#define EASYLINK_OUTPUT_POWER_TBL_SIZE   16
 
 //Primary IEEE address location
 #define EASYLINK_PRIMARY_IEEE_ADDR_LOCATION   0x500012F0
@@ -119,103 +126,11 @@ static bool rfModeMultiClient = false;
 static uint32_t asyncRxTimeOut = 0;
 
 //local commands, contents will be defined by modulation type
-static rfc_CMD_PROP_RADIO_DIV_SETUP_t EasyLink_cmdPropRadioDivSetup;
+static union setupCmd_t EasyLink_cmdPropRadioSetup;
 static rfc_CMD_FS_t EasyLink_cmdFs;
 static RF_Mode EasyLink_RF_prop;
-
-//Tx command
-/*static*/ rfc_CMD_PROP_TX_t EasyLink_cmdPropTx =
-{
-        .commandNo = 0x3801,
-        .status = 0x0000,
-        .pNextOp = 0,
-        .startTime = 0x00000000,
-        .startTrigger.triggerType = 0x0,
-        .startTrigger.bEnaCmd = 0x0,
-        .startTrigger.triggerNo = 0x0,
-        .startTrigger.pastTrig = 0x0,
-        .condition.rule = 0x1,
-        .condition.nSkip = 0x0,
-        .pktConf.bFsOff = 0x0,
-        .pktConf.bUseCrc = 0x1,
-        .pktConf.bVarLen = 0x1,
-        .pktLen = 0,
-        .syncWord = 0x930b51de,
-        .pPkt = 0,
-};
-
-//Rx command
-static rfc_CMD_PROP_RX_ADV_t EasyLink_cmdPropRxAdv = {
-        .commandNo = 0x3804,
-        .status = 0x0000,
-        .pNextOp = 0,
-        .startTime = 0x00000000,
-        .startTrigger.triggerType = TRIG_NOW,
-        .startTrigger.bEnaCmd = 0x0,
-        .startTrigger.triggerNo = 0x0,
-        .startTrigger.pastTrig = 0x0,
-        .condition.rule = 0x1,
-        .condition.nSkip = 0x0,
-        .pktConf.bFsOff = 0x0,
-        .pktConf.bRepeatOk = 0x0,
-        .pktConf.bRepeatNok = 0x0,
-        .pktConf.bUseCrc = 0x1,
-        .pktConf.bCrcIncSw = 0x0,
-        .pktConf.bCrcIncHdr = 0x1,
-        .pktConf.endType = 0x0,
-        .pktConf.filterOp = 0x1,
-        .rxConf.bAutoFlushIgnored = 0x0,
-        .rxConf.bAutoFlushCrcErr = 0x0,
-        .rxConf.bIncludeHdr = 0x1,
-        .rxConf.bIncludeCrc = 0x0,
-        .rxConf.bAppendRssi = 0x0,
-        .rxConf.bAppendTimestamp = 0x0,
-        .rxConf.bAppendStatus = 0x0,
-        .syncWord0 = 0x930b51de,
-        .syncWord1 = 0,
-        .maxPktLen = 0,
-        .hdrConf.numHdrBits = 8,
-        .hdrConf.lenPos = 0,
-        .hdrConf.numLenBits = 8,
-        .addrConf.addrType = 0,
-        .addrConf.addrSize = 0,
-        .addrConf.addrPos = 0,
-        .addrConf.numAddr = 1,
-        .lenOffset = 0,
-        .endTrigger.triggerType = TRIG_NEVER,
-        .endTrigger.bEnaCmd = 0x0,
-        .endTrigger.triggerNo = 0x0,
-        .endTrigger.pastTrig = 0x0,
-        .endTime = 0x00000000,
-        .pAddr =  0,
-        .pQueue = 0,
-        .pOutput = 0,
-};
-
-// TX Power dBm lookup table - values from SmartRF Studio
-typedef struct outputConfig {
-  int8_t dbm;
-  uint16_t txPower; /* Value for the PROP_DIV_RADIO_SETUP.txPower field */
-} OutputConfig;
-
-static const OutputConfig outputPower[EASYLINK_OUTPUT_POWER_TBL_SIZE] = {
-    {  0, 0x0041 },
-    {  1, 0x10c3 },
-    {  2, 0x1042 },
-    {  3, 0x14c4 },
-    {  4, 0x18c5 },
-    {  5, 0x18c6 },
-    {  6, 0x1cc7 },
-    {  7, 0x20c9 },
-    {  8, 0x24cb },
-    {  9, 0x2ccd },
-    { 10, 0x38d3 },
-    { 11, 0x50da },
-    { 12, 0xb818 },
-    { 13, 0xa73f }, /* 12.5 */
-    { 14, 0xa73f },
-    {-10, 0x08c0 },
-};
+static rfc_CMD_PROP_TX_t EasyLink_cmdPropTx;
+static rfc_CMD_PROP_RX_ADV_t EasyLink_cmdPropRxAdv;
 
 // The table for setting the Rx Address Filters
 static uint8_t addrFilterTable[EASYLINK_MAX_ADDR_FILTERS * EASYLINK_MAX_ADDR_SIZE] = {0xaa};
@@ -363,7 +278,7 @@ static EasyLink_Status enableTestMode(EasyLink_CtrlOption mode)
 
     txTestCmd.config.bFsOff = 1;
     txTestCmd.syncWord = EasyLink_cmdPropTx.syncWord;
-    txTestCmd.config.whitenMode = EasyLink_cmdPropRadioDivSetup.formatConf.whitenMode;
+    txTestCmd.config.whitenMode = EasyLink_cmdPropRadioSetup.setup.formatConf.whitenMode;
 
     //set tone (unmodulated) or signal (modulated)
     if (mode == EasyLink_Ctrl_Test_Tone)
@@ -428,35 +343,55 @@ EasyLink_Status EasyLink_init(EasyLink_PhyType ui32ModType)
 
     if (ui32ModType == EasyLink_Phy_Custom)
     {
-        memcpy(&EasyLink_cmdPropRadioDivSetup, &RF_cmdPropRadioDivSetup, sizeof(rfc_CMD_PROP_RADIO_DIV_SETUP_t));
+        if(ChipInfo_GetChipType() == CHIP_TYPE_CC2650)
+        {
+            memcpy(&EasyLink_cmdPropRadioSetup.setup, &RF_cmdPropRadioDivSetup, sizeof(rfc_CMD_PROP_RADIO_SETUP_t));
+        }
+        else
+        {
+            memcpy(&EasyLink_cmdPropRadioSetup.divSetup, &RF_cmdPropRadioDivSetup, sizeof(rfc_CMD_PROP_RADIO_DIV_SETUP_t));
+        }
         memcpy(&EasyLink_cmdFs, &RF_cmdFs, sizeof(rfc_CMD_FS_t));
         memcpy(&EasyLink_RF_prop, &RF_prop, sizeof(RF_Mode));
-        //Copy the Synch word from the SmartRF setting Rx/Tx command
-        EasyLink_cmdPropRxAdv.syncWord0 = RF_cmdPropRx.syncWord;
-        EasyLink_cmdPropTx.syncWord = RF_cmdPropTx.syncWord;
+        memcpy(&EasyLink_cmdPropRxAdv, RF_pCmdPropRxAdv_preDef, sizeof(rfc_CMD_PROP_RX_ADV_t));
+        memcpy(&EasyLink_cmdPropTx, &RF_cmdPropTx, sizeof(rfc_CMD_PROP_TX_t));
     }
-    else if (ui32ModType == EasyLink_Phy_50kbps2gfsk)
+    else if ( (ui32ModType == EasyLink_Phy_50kbps2gfsk) && (ChipInfo_GetChipType() != CHIP_TYPE_CC2650) )
     {
-        memcpy(&EasyLink_cmdPropRadioDivSetup,
-                &RF_cmdPropRadioDivSetup_50kbps2gfsk,
+        memcpy(&EasyLink_cmdPropRadioSetup.divSetup,
+                RF_pCmdPropRadioDivSetup_fsk,
                 sizeof(rfc_CMD_PROP_RADIO_DIV_SETUP_t));
-        memcpy(&EasyLink_cmdFs, &RF_cmdFs_50kbps2gfsk, sizeof(rfc_CMD_FS_t));
-        memcpy(&EasyLink_RF_prop, &RF_prop_50kbps2gfsk, sizeof(RF_Mode));
-        EasyLink_cmdPropRxAdv.syncWord0 = 0x930b51de;
-        EasyLink_cmdPropTx.syncWord = 0x930b51de;
+        memcpy(&EasyLink_cmdFs, RF_pCmdFs_preDef, sizeof(rfc_CMD_FS_t));
+        memcpy(&EasyLink_RF_prop, RF_pProp_fsk, sizeof(RF_Mode));
+        memcpy(&EasyLink_cmdPropRxAdv, RF_pCmdPropRxAdv_preDef, sizeof(rfc_CMD_PROP_RX_ADV_t));
+        memcpy(&EasyLink_cmdPropTx, RF_pCmdPropTx_preDef, sizeof(rfc_CMD_PROP_TX_t));
     }
-    else if (ui32ModType == EasyLink_Phy_625bpsLrm)
+    else if ( (ui32ModType == EasyLink_Phy_625bpsLrm) && (ChipInfo_GetChipType() != CHIP_TYPE_CC2650) )
     {
-        memcpy(&EasyLink_cmdPropRadioDivSetup,
-                &RF_cmdPropRadioDivSetup_625bpsLrm,
+        memcpy(&EasyLink_cmdPropRadioSetup.divSetup,
+                RF_pCmdPropRadioDivSetup_lrm,
                 sizeof(rfc_CMD_PROP_RADIO_DIV_SETUP_t));
-        memcpy(&EasyLink_cmdFs, &RF_cmdFs_625bpsLrm, sizeof(rfc_CMD_FS_t));
-        memcpy(&EasyLink_RF_prop, &RF_prop_625bpsLrm, sizeof(RF_Mode));
-        EasyLink_cmdPropRxAdv.syncWord0 = 0x930b51de;
-        EasyLink_cmdPropTx.syncWord = 0x930b51de;
+        memcpy(&EasyLink_cmdFs, RF_pCmdFs_preDef, sizeof(rfc_CMD_FS_t));
+        memcpy(&EasyLink_RF_prop, RF_pProp_lrm, sizeof(RF_Mode));
+        memcpy(&EasyLink_cmdPropRxAdv, RF_pCmdPropRxAdv_preDef, sizeof(rfc_CMD_PROP_RX_ADV_t));
+        memcpy(&EasyLink_cmdPropTx, RF_pCmdPropTx_preDef, sizeof(rfc_CMD_PROP_TX_t));
+    }
+    else if ( (ui32ModType == EasyLink_Phy_2_4_200kbps2gfsk) && (ChipInfo_GetChipType() == CHIP_TYPE_CC2650) )
+    {
+        memcpy(&EasyLink_cmdPropRadioSetup.setup,
+                RF_pCmdPropRadioSetup_2_4G_fsk,
+                sizeof(rfc_CMD_PROP_RADIO_SETUP_t));
+        memcpy(&EasyLink_cmdFs, RF_pCmdFs_preDef, sizeof(rfc_CMD_FS_t));
+        memcpy(&EasyLink_RF_prop, RF_pProp_2_4G_fsk, sizeof(RF_Mode));
+        memcpy(&EasyLink_cmdPropRxAdv, RF_pCmdPropRxAdv_preDef, sizeof(rfc_CMD_PROP_RX_ADV_t));
+        memcpy(&EasyLink_cmdPropTx, RF_pCmdPropTx_preDef, sizeof(rfc_CMD_PROP_TX_t));
     }
     else
     {
+        if (busyMutex != NULL)
+        {
+            Semaphore_post(busyMutex);
+        }
         return EasyLink_Status_Param_Error;
     }
 
@@ -467,7 +402,7 @@ EasyLink_Status EasyLink_init(EasyLink_PhyType ui32ModType)
 
     /* Request access to the radio */
     rfHandle = RF_open(&rfObject, &EasyLink_RF_prop,
-            (RF_RadioSetup*)&EasyLink_cmdPropRadioDivSetup, &rfParams);
+            (RF_RadioSetup*)&EasyLink_cmdPropRadioSetup.setup, &rfParams);
 
     //Set Rx packet size, taking into account addr which is not in the hdr
     //(only length can be)
@@ -538,7 +473,7 @@ EasyLink_Status EasyLink_setFrequency(uint32_t ui32Freq)
     /* Set the frequency */
     EasyLink_cmdFs.frequency = (uint16_t)(ui32Freq / 1000000);
     EasyLink_cmdFs.fractFreq = (uint16_t) (((uint64_t)ui32Freq -
-            (EasyLink_cmdFs.frequency * 1000000)) * 65536 / 1000000);
+            ((uint64_t)EasyLink_cmdFs.frequency * 1000000)) * 65536 / 1000000);
 
     /* Run command */
     RF_EventMask result = RF_runCmd(rfHandle, (RF_Op*)&EasyLink_cmdFs,
@@ -593,23 +528,19 @@ EasyLink_Status EasyLink_setRfPwr(int8_t i8txPowerdBm)
 
     cmdSetPower.commandNo = CMD_SET_TX_POWER;
 
-    if (i8txPowerdBm < 0)
+    if (i8txPowerdBm < rfPowerTable[0].dbm)
     {
-        txPowerIdx = 15;
+        i8txPowerdBm = rfPowerTable[0].dbm;
     }
-    else if (i8txPowerdBm > 14)
+    else if (i8txPowerdBm > rfPowerTable[rfPowerTableSize-1].dbm )
     {
-        txPowerIdx = 14;
-    }
-    else
-    {
-        txPowerIdx = i8txPowerdBm;
+        i8txPowerdBm = rfPowerTable[rfPowerTableSize-1].dbm;
     }
 
-    //if 14dBm power is requested then the CCFG_FORCE_VDDR_HH must be set in
+    //if max power is requested then the CCFG_FORCE_VDDR_HH must be set in
     //the ccfg
 #if (CCFG_FORCE_VDDR_HH != 0x1)
-    if (txPowerIdx == 14)
+    if (i8txPowerdBm == rfPowerTable[rfPowerTableSize-1].dbm)
     {
         //Release the busyMutex
         Semaphore_post(busyMutex);
@@ -617,12 +548,16 @@ EasyLink_Status EasyLink_setRfPwr(int8_t i8txPowerdBm)
     }
 #endif
 
-    //CMD_SET_TX_POWER txPower is currently a bit filed in a struct, but will
-    //change to a uint16 in future releases. Hence do a memcpy to cater for
-    //both
-    memcpy(&(cmdSetPower.txPower), &(outputPower[txPowerIdx].txPower),
-            sizeof(uint16_t));
-    EasyLink_cmdPropRadioDivSetup.txPower = outputPower[txPowerIdx].txPower;
+    for (txPowerIdx = 0;
+            txPowerIdx < rfPowerTableSize;
+            txPowerIdx++)
+    {
+        if (i8txPowerdBm >= rfPowerTable[txPowerIdx].dbm)
+        {
+            cmdSetPower.txPower = rfPowerTable[txPowerIdx].txPower;
+            EasyLink_cmdPropRadioSetup.setup.txPower = rfPowerTable[txPowerIdx].txPower;
+        }
+    }
 
     //point the Operational Command to the immediate set power command
     immOpCmd.cmdrVal = (uint32_t) &cmdSetPower;
@@ -656,15 +591,23 @@ int8_t EasyLink_getRfPwr(void)
     }
 
     for (txPowerIdx = 0;
-            txPowerIdx < EASYLINK_OUTPUT_POWER_TBL_SIZE;
+            txPowerIdx < rfPowerTableSize;
             txPowerIdx++)
     {
-        if (outputPower[txPowerIdx].txPower == EasyLink_cmdPropRadioDivSetup.txPower)
+        if (rfPowerTable[txPowerIdx].txPower == EasyLink_cmdPropRadioSetup.setup.txPower)
         {
-            txPowerdBm = outputPower[txPowerIdx].dbm;
+            txPowerdBm = rfPowerTable[txPowerIdx].dbm;
             continue;
         }
     }
+
+    //if CCFG_FORCE_VDDR_HH is not set max power cannot be achieved
+#if (CCFG_FORCE_VDDR_HH != 0x1)
+    if (txPowerdBm == rfPowerTable[rfPowerTableSize-1].dbm)
+    {
+        txPowerdBm = rfPowerTable[rfPowerTableSize-2].dbm;
+    }
+#endif
 
     return txPowerdBm;
 }

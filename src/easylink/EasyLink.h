@@ -145,7 +145,7 @@ extern "C"
 #include <stdbool.h>
 #include <stdint.h>
 
-#define EASYLINK_API_VERSION "EasyLink-v1.01.00"
+#define EASYLINK_API_VERSION "EasyLink-v2.00.00"
 
 /// \brief defines the largest Tx/Rx payload that the interface can support
 #define EASYLINK_MAX_DATA_LENGTH        128
@@ -182,9 +182,10 @@ typedef enum
 /// \brief Phy Type passed to EasyLink_init
 typedef enum
 {
-    EasyLink_Phy_50kbps2gfsk = 0, ///Phy settings for 50kbps data rate, IEEE 802.15.4g GFSK.
-    EasyLink_Phy_625bpsLrm = 1, ///Phy settings for 625bps data rate, Long Range Mode.
-    EasyLink_Phy_Custom = 2, ///Customer Phy specific settings exported from SmartRF Studio
+    EasyLink_Phy_Custom = 0, ///Customer Phy specific settings exported from SmartRF Studio
+    EasyLink_Phy_50kbps2gfsk = 1, ///Phy settings for Sub1G 50kbps data rate, IEEE 802.15.4g GFSK.
+    EasyLink_Phy_625bpsLrm = 2, ///Phy settings for Sub1G 625bps data rate, Long Range Mode.
+    EasyLink_Phy_2_4_200kbps2gfsk = 3, ///Phy settings for 2.4Ghz 200kbps data rate, IEEE 802.15.4g GFSK.
 } EasyLink_PhyType;
 
 /// \brief Advance configuration options
