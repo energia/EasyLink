@@ -25,10 +25,11 @@ void setup() {
 
 uint16_t value;
 void loop() {
-  // Wait / block for 1 second to receive a packet.
-  rxPacket.rxTimeout = 1000;
+  // Wait / block for 2 second to receive a packet.
+  // rxTimeout is in Radio time and needs to be converted from miliseconds to Radio Time
+  rxPacket.rxTimeout = EasyLink_ms_To_RadioTime(2000);
   // Turn the receiver on immediately
-  rxPacket.absTime = 0;
+  rxPacket.absTime = EasyLink_ms_To_RadioTime(0);
 
   EasyLink_Status status = myLink.receive(&rxPacket);
   
@@ -39,7 +40,11 @@ void loop() {
     Serial.print(" and value ");
     Serial.println(value);
   } else {
-    Serial.print("Error receiving packet with status code:  ");
-    Serial.println(status);
+
+    Serial.print("Error receiving packet with status code: ");
+    Serial.print(status);
+    Serial.print(" (");
+    Serial.print(myLink.getStatusString(status));
+    Serial.println(")");
   }
 }

@@ -37,15 +37,19 @@ void loop() {
   // Set the length of the packet
   txPacket.len = sizeof(uint16_t);
   // Transmit immediately
-  txPacket.absTime = 0;
+  txPacket.absTime = EasyLink_ms_To_RadioTime(0);
 
-  uint8_t status = myLink.transmit(&txPacket);
+  EasyLink_Status status = myLink.transmit(&txPacket);
 
   if(status == EasyLink_Status_Success) {
     Serial.println("Packet transmitted successfully");
   } else {
     Serial.print("Transmit failed with status code: ");
-    Serial.println(status);
+    Serial.print(status);
+    Serial.print(" (");
+    Serial.print(myLink.getStatusString(status));
+    Serial.println(")");
   }
+
   delay(1000);
 }
