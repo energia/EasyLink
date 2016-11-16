@@ -9,8 +9,21 @@
 #define EasyLink_h
 
 #include "Energia.h"
-#include <easylink/Easylink.h>
+#include <easylink/EasyLink.h>
 struct ring_buffer;
+
+static const char * status_codes[] = {
+    "Success",
+    "Config Error",
+    "Param Error",
+    "Mem Error",
+    "Cmd Error",
+    "Tx Error",
+    "Rx Error",
+    "Rx Timeout",
+    "Busy Error",
+    "Status Aborted"
+};
 
 class EasyLink : public Stream
 {
@@ -27,6 +40,7 @@ class EasyLink : public Stream
         EasyLink_Status receive(EasyLink_ReceiveCb handle);
         EasyLink_Status receive(EasyLink_RxPacket *rxPacket);
         EasyLink_Status receive(void (*userFunc)(void) = NULL);
+        inline const char *getStatusString(EasyLink_Status s) { return status_codes[s]; };
         void beginTransmission(uint8_t dst);
         void beginTransmission(uint8_t *dst);
         EasyLink_Status endTransmission(EasyLink_TxDoneCb txCallback = NULL);
