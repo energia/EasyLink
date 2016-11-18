@@ -39,7 +39,7 @@ EasyLink::EasyLink()
     _tx_buffer = &tx_buffer;
 }
 
-char * EasyLink::version()
+const char * EasyLink::version()
 {
     return EASYLINK_API_VERSION;
 }

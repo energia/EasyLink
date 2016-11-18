@@ -34,7 +34,7 @@ class EasyLink : public Stream
         EasyLink_RxPacket *rxPacketp;
     public:
         EasyLink();
-        char * version();
+        const char * version();
         EasyLink_Status begin(EasyLink_PhyType mode=EasyLink_Phy_50kbps2gfsk);
         EasyLink_Status transmit(EasyLink_TxPacket *txPacket, EasyLink_TxDoneCb handle=NULL);
         EasyLink_Status receive(EasyLink_ReceiveCb handle);
