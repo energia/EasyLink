@@ -30,6 +30,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define DEVICE_FAMILY cc13x0
 /***** Includes *****/
 #include "EasyLink.h"
 

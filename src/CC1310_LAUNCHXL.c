@@ -31,6 +31,7 @@
  */
 
 
+#define DEVICE_FAMILY cc13x0
 /* Include drivers */
 #include <ti/drivers/rf/RF.h>
 
