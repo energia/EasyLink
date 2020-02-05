@@ -9,7 +9,12 @@
 #define EasyLink_h
 
 #include "Energia.h"
+#ifdef ENERGIA_ARCH_CC13XX
 #include <easylink/EasyLink.h>
+#else
+#include <easylink/EasyLinkv2.h>
+#endif
+
 struct ring_buffer;
 
 static const char * status_codes[] = {

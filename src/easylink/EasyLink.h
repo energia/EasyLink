@@ -1,3 +1,4 @@
+#ifdef ENERGIA_ARCH_CC13XX
 /*
  * Copyright (c) 2015-2016, Texas Instruments Incorporated
  * All rights reserved.
@@ -490,3 +491,5 @@ extern EasyLink_Status EasyLink_getCtrl(EasyLink_CtrlOption Ctrl,
 //! @}
 //
 //*****************************************************************************
+
+#endif //DEVICE_FAMILY == cc13x0

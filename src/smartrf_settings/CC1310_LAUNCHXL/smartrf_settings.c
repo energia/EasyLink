@@ -25,7 +25,6 @@
 // Sync Word Length: 32 Bits
 // TX Power: 14 dBm (requires define CCFG_FORCE_VDDR_HH = 1 in ccfg.c, see CC13xx/CC26xx Technical Reference Manual)
 // Whitening: No whitening
-#define DEVICE_FAMILY cc13x0
 
 #include <driverlib/rf_mailbox.h>
 #include <driverlib/rf_common_cmd.h>

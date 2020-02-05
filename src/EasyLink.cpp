@@ -46,7 +46,14 @@ const char * EasyLink::version()
 
 EasyLink_Status EasyLink::begin(EasyLink_PhyType mode)
 {
+#ifdef ENERGIA_ARCH_CC13X2
+   EasyLink_Params easyLink_params;
+   EasyLink_Params_init(&easyLink_params);
+   easyLink_params.ui32ModType = mode;
+   return EasyLink_init(&easyLink_params);
+#else
    return EasyLink_init(mode);
+#endif
 }
 
 void EasyLink::beginTransmission(uint8_t dst) {
