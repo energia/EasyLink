@@ -46,7 +46,19 @@
 #endif //USE_DMM
 
 /* TI Drivers */
-#include "../syscfg/ti_drivers_config.h"
+#if defined(BOARD_CC1312R1_LAUNCHXL)
+#define CONFIG_CC1312R1_LAUNCHXL
+#elif defined(BOARD_CC1352R1_LAUNCHXL)
+#define CONFIG_CC1352R1_LAUNCHXL
+#elif defined(BOARD_CC26X2R1_LAUNCHXL)
+#define CONFIG_CC26X2R1_LAUNCHXL
+#elif defined(BOARD_LPSTK_CC1352R)
+#define CONFIG_LPSTK_CC1352R
+#else
+#error "This board is not supported"
+#endif
+
+
 #include "../syscfg/ti_radio_config.h"
 
 /* BIOS Header files */
@@ -1197,7 +1209,8 @@ EasyLink_Status EasyLink_setRfPower(int8_t i8TxPowerDbm)
     (defined CONFIG_CC1312R1F3RGZ)      || (defined CONFIG_CC2652R1FRGZ)       || \
     (defined CONFIG_CC1312R1_LAUNCHXL)  || (defined CONFIG_CC1352R1_LAUNCHXL)  || \
     (defined CONFIG_CC1352P1_LAUNCHXL)  || (defined CONFIG_CC1352P_2_LAUNCHXL) || \
-    (defined CONFIG_CC1352P_4_LAUNCHXL) || (defined CONFIG_CC26X2R1_LAUNCHXL)
+    (defined CONFIG_CC1352P_4_LAUNCHXL) || (defined CONFIG_CC26X2R1_LAUNCHXL)  || \
+    (defined CONFIG_LPSTK_CC1352R)
 
     RF_TxPowerTable_Entry *rfPowerTable = NULL;
     RF_TxPowerTable_Value newValue;
@@ -1322,7 +1335,8 @@ EasyLink_Status EasyLink_getRfPower(int8_t *pi8TxPowerDbm)
     (defined CONFIG_CC1312R1F3RGZ)      || (defined CONFIG_CC2652R1FRGZ)       || \
     (defined CONFIG_CC1312R1_LAUNCHXL)  || (defined CONFIG_CC1352R1_LAUNCHXL)  || \
     (defined CONFIG_CC1352P1_LAUNCHXL)  || (defined CONFIG_CC1352P_2_LAUNCHXL) || \
-    (defined CONFIG_CC1352P_4_LAUNCHXL) || (defined CONFIG_CC26X2R1_LAUNCHXL)
+    (defined CONFIG_CC1352P_4_LAUNCHXL) || (defined CONFIG_CC26X2R1_LAUNCHXL)  || \
+    (defined CONFIG_LPSTK_CC1352R)
 
     uint8_t rfPowerTableSize = 0;
     RF_TxPowerTable_Entry *rfPowerTable = NULL;
